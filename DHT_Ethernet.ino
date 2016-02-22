@@ -1,4 +1,13 @@
+#include <ethernet_comp.h>
+#include <Dhcp.h>
+#include <UIPEthernet.h>
+#include <UIPUdp.h>
+#include <UIPServer.h>
+#include <Dns.h>
+#include <UIPClient.h>
+
 #include "DHT.h"
+#include "SPI.h"
  
 // Pin for the DHT sensor
 #define DHTPIN 7    
@@ -8,72 +17,82 @@
 // Create instance for the DHT sensor
 DHT dht(DHTPIN, DHTTYPE);
 
-#include <EtherCard.h>
-static byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x31 };
-static byte myip[] = { 192,168,20,2 };
-byte Ethernet::buffer[500];
-BufferFiller bfill;
-
+//#include <EtherCard.h>
+byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x31 };
+byte myip[] = { 192,168,20,2 };
+EthernetServer server(80);
+long lastReadingTime = 0;
+ 
 
 // Setup
 void setup(void)
 {
   dht.begin();
+  SPI.begin();
+  Ethernet.begin(mymac, myip);
+  server.begin();
   Serial.begin(115200);
-	if (ether.begin(sizeof Ethernet::buffer, mymac) == 0)
-		Serial.println( "Failed to access Ethernet Controller");
-	ether.staticSetup(myip);
+  delay(1000);
+//	if (ether.begin(sizeof Ethernet::buffer, mymac) == 0)
+//		Serial.println( "Failed to access Ethernet Controller");
+//	ether.staticSetup(myip);
 
 }
-
-static word homePage(){
-	long t=millis() / 1000;
-	word h = t / 3600;
-	byte m = (t / 60) % 60;
-	byte s = t % 60;
-	bfill = ether.tcpOffset();
-	bfill.emit_p(PSTR(
-//		"HTTP/1.1 200 OK\r\n"
-//		"Content-Type: text/hmtl\r\n"
-//		"Pragma: no-cache\r\n"
-//		"Connection: close\r\n"
-//		"Refresh: 5\r\n"
-//		"\r\n"
-//		"<!DOCTYPE HTML>"
-		"<html>"
-		"<title>Temp Server</title>"
-		"<h1>$D$D:$D$D:$D$D<h1>"
-		"</html>"),
-		h/10, h%10, m/10, m%10, s/10, s%10);
-	return bfill.position();
-}
-
 
 
 void loop(void)
 {
-
-word len = ether.packetReceive();
-word pos = ether.packetLoop(len);
-
-if (pos) //check if valid tcp data is received
-	ether.httpServerReply(homePage()); //send web page data
-
-
-    // Get command
-    if (Serial.available()) {
- 
-      // Read command
-      byte c = Serial.read ();
- 
-      // If a measurement is requested, measure data and send it back
-      if (c == 'm'){
- 
-          int humidity = (int)dht.readHumidity();
-          int temp = (int)dht.readTemperature();
- 
-          // Send data (temperature,humidity)
-          Serial.println(String(temp) + "," + String(humidity));
-      }
+  if (millis() - lastReadingTime > 1000) {
+    listenForEthernetClients();
+      // timestamp the last time you got a reading:
+      lastReadingTime = millis();
+    }
   }
-}
+
+ void listenForEthernetClients() {
+  // listen for incoming clients 
+ int humidity = (int)dht.readHumidity();
+ int temp = (int)dht.readTemperature();
+          
+ EthernetClient client = server.available();
+  if (client) {
+    Serial.println("Got a client");
+    // an http request ends with a blank line
+    boolean currentLineIsBlank = true;
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+        // if you've gotten to the end of the line (received a newline
+        // character) and the line is blank, the http request has ended,
+        // so you can send a reply
+        if (c == '\n' && currentLineIsBlank) {
+          // send a standard http response header
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-Type: text/html");
+          client.println();
+          // print the current readings, in HTML format:
+          // Send data (temperature,humidity)
+          client.print("Temperature: ");
+          client.println(String(temp));
+          client.print("Humidity: ");
+          client.println(String(humidity));
+          client.println("<br />");
+          break;
+        }
+        if (c == '\n') {
+          // you're starting a new line
+          currentLineIsBlank = true;
+        } else if (c != '\r') {
+          // you've gotten a character on the current line
+          currentLineIsBlank = false;
+        }
+      }
+    }
+  // give the web browser time to receive the data
+    delay(1);
+    // close the connection:
+    client.stop();
+  }
+ }
+  
+
