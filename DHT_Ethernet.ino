@@ -67,9 +67,12 @@ void loop(void)
         // so you can send a reply
         if (c == '\n' && currentLineIsBlank) {
           // send a standard http response header
-          client.println("HTTP/1.1 200 OK");
+					client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: text/html");
+          client.println("Connection: close");  // the connection will be closed after completion of the response
+          client.println("Refresh: 5");  // refresh the page automatically every 5 sec
           client.println();
+          client.println("<!DOCTYPE HTML>");
           // print the current readings, in HTML format:
           // Send data (temperature,humidity)
           client.print("Temperature: ");
