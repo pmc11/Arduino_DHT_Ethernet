@@ -1,10 +1,10 @@
-#include <ethernet_comp.h>
 #include <Dhcp.h>
-#include <UIPEthernet.h>
-#include <UIPUdp.h>
-#include <UIPServer.h>
 #include <Dns.h>
+#include <ethernet_comp.h>
 #include <UIPClient.h>
+#include <UIPEthernet.h>
+#include <UIPServer.h>
+#include <UIPUdp.h>
 
 #include "DHT.h"
 #include "SPI.h"
@@ -19,7 +19,7 @@ DHT dht(DHTPIN, DHTTYPE);
 
 //#include <EtherCard.h>
 byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x31 };
-byte myip[] = { 192,168,20,2 };
+byte myip[] = { 192,168,10,40 };
 EthernetServer server(80);
 long lastReadingTime = 0;
  
