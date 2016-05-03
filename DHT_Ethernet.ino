@@ -19,7 +19,7 @@ DHT dht(DHTPIN, DHTTYPE);
 
 //#include <EtherCard.h>
 byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x31 };
-byte myip[] = { 192,168,10,40 };
+byte myip[] = { 172,20,10,40 };
 EthernetServer server(80);
 long lastReadingTime = 0;
  
